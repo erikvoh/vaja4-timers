@@ -31,9 +31,13 @@ void TIM3_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 
 /* Deklaracija spremenljivk */
-//take spremenljivke so no go, ker ne pomenijo ničesar. smiselno bi bilo kaj v smislu "led_blink" in "button_pressed"
+//take spremenljivke so no go, ker ne pomenijo ničesar. smiselno bi bilo kaj v smislu "led_blink" in "button_allowed"
+//je potreben int tip? mogoče bi bilo bolje uporabiti uint8_t
 int flag=0;
 int flag1=0;
+
+uint8_t led_blink;		//1 - led should blink, 0 - led off
+uint8_t button_allowed; //1 - gumb se lahko pritisne, 0 - če je pritisnjen gumb, ne naredi ničesar
 
 void Prekinitev_konfiguracija (void){
 	//Konfiguracija tipke (PC13) kot vhod -> načeloma ne bi bilo potrebno, ker je input reset state za f4
@@ -88,36 +92,87 @@ int main(void)
 
 
 
-	while(1){}}
-
-void TIM2_IRQHandler(void){ //za blinkanje led
-	WRITE_REG(TIM2->SR,0); //clear status register
-
-	//toggle PA5
-	if(flag%2 == 0){GPIOA->ODR^=GPIO_ODR_ODR_5;}
+	while(1){}
 }
 
-void TIM3_IRQHandler(void){ //za debouncing
-	WRITE_REG(TIM3->SR,0); //clear status register
-	flag1=0;
-	CLEAR_BIT(TIM3->CR1,TIM_CR1_CEN); //disable counter
 
+
+
+//void TIM2_IRQHandler(void){ //za blinkanje led
+//	WRITE_REG(TIM2->SR,0); //clear status register
+//
+//	//toggle PA5
+////	if(flag%2 == 0){GPIOA->ODR^=GPIO_ODR_ODR_5;}
+//
+//}
+
+void TIM2_IRQHandler(void)
+{
+	GPIOA->ODR^=GPIO_ODR_ODR_5;
 }
 
-void EXTI15_10_IRQHandler(void) {
-	SET_BIT(TIM3->CR1,TIM_CR1_CEN); //enable counter
-	if(flag1==0){
-		WRITE_REG(TIM3->CNT,0);
-		flag=flag+1;
-		if(flag%2 == 0){
-			SET_BIT(TIM2->CR1,TIM_CR1_CEN); //enable counter
-			WRITE_REG(TIM2->CNT,0);
-			SET_BIT(GPIOA->ODR,GPIO_ODR_ODR_5);
-			flag=0;
-		} else {
-			CLEAR_BIT(GPIOA->ODR,GPIO_ODR_ODR_5);
-			CLEAR_BIT(TIM2->CR1,TIM_CR1_CEN); //disable counter
-		}	}
-	flag1=1;
+
+
+
+
+
+//mogoče bi bilo smiselno uporabiti one-pulse mode pri timerju, ker potem ga ne rabiš vsakič izklopiti in postavljati na 0
+//void TIM3_IRQHandler(void){ //za debouncing
+//	WRITE_REG(TIM3->SR,0); //clear status register
+//	flag1=0;
+//	CLEAR_BIT(TIM3->CR1,TIM_CR1_CEN); //disable counter
+//
+//}
+
+void TIM3_IRQHandler(void) //za debouncing
+{
+	WRITE_REG(TIM3->SR,0); //clear status register, da se lahko ponovno proži interrupt
+	CLEAR_BIT(TIM3->CR1,TIM_CR1_CEN); //ugasni timer za debouncing do ponovnega pritiska gumba
+
+	button_allowed = 1; //postavi flag, da se gumb lahko spet pritisne
+}
+
+//void EXTI15_10_IRQHandler(void) {
+//	SET_BIT(TIM3->CR1,TIM_CR1_CEN); //enable counter
+//	if(flag1==0){
+//		WRITE_REG(TIM3->CNT,0);
+//		flag=flag+1;
+//		if(flag%2 == 0){
+//			SET_BIT(TIM2->CR1,TIM_CR1_CEN); //enable counter
+//			WRITE_REG(TIM2->CNT,0);
+//			SET_BIT(GPIOA->ODR,GPIO_ODR_ODR_5);
+//			flag=0;
+//		} else {
+//			CLEAR_BIT(GPIOA->ODR,GPIO_ODR_ODR_5);
+//			CLEAR_BIT(TIM2->CR1,TIM_CR1_CEN); //disable counter
+//		}	}
+//	flag1=1;
+//	WRITE_REG(EXTI->PR,0x2000);          // clear interrupt pending flag
+//}
+
+
+
+void EXTI15_10_IRQHandler(void)
+{
+	if (button_allowed)
+	{
+		//če je prej utripala led dioda -> zdaj ugasni in izklopi timer, drugače zaženi timer za utripanje
+		if(led_blink)
+		{
+			led_blink = 0;
+			CLEAR_BIT(TIM2->CR1,TIM_CR1_CEN); //ugasni counter za utripanje
+			CLEAR_BIT(GPIOA->ODR,GPIO_ODR_ODR_5); //ugasni led diodo
+		}
+		else
+		{
+			led_blink = 1;
+			SET_BIT(TIM3->CR1,TIM_CR1_CEN); //zaženi counter za utripanje
+		}
+
+		SET_BIT(TIM3->CR1,TIM_CR1_CEN); //enable counter
+
+		button_allowed = 0; //gumb se ne s
+	}
+
 	WRITE_REG(EXTI->PR,0x2000);          // clear interrupt pending flag
 }
