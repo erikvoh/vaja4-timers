@@ -72,13 +72,13 @@ int main(void)
 	WRITE_REG(TIM2->ARR,1000-1);	//auto-reload register - nastavi do koliko bo štel timer 0-999
 	SET_BIT(TIM2->DIER,1);//enable interrupt
 	NVIC_EnableIRQ(TIM2_IRQn);
-	SET_BIT(TIM2->CR1,TIM_CR1_CEN); //enable counter
+//	SET_BIT(TIM2->CR1,TIM_CR1_CEN); //enable counter
 
 	//TIM3 - postavitev PSCA registra in ARR registra, DIER register za prekinitev
 	//perioda timerja 200 ms -> 5 Hz za debounce led diode
 	WRITE_REG(TIM3->PSC,16000-1);
 	WRITE_REG(TIM3->ARR,200-1);		//auto-reload register - nastavi do koliko bo štel timer 0-199
-	SET_BIT(TIM3->DIER,1);//enable interrupt
+	SET_BIT(TIM3->DIER,1);	//enable interrupt
 	NVIC_EnableIRQ(TIM3_IRQn);
 
 	//counterja se tukaj še ne sme omogočiti, ker ga je potrebno zagnati šele po pritisku gumba
@@ -166,12 +166,12 @@ void EXTI15_10_IRQHandler(void)
 		else
 		{
 			led_blink = 1;
-			SET_BIT(TIM3->CR1,TIM_CR1_CEN); //zaženi counter za utripanje
+			SET_BIT(TIM2->CR1,TIM_CR1_CEN); //zaženi counter za utripanje
 		}
 
-		SET_BIT(TIM3->CR1,TIM_CR1_CEN); //enable counter
 
-		button_allowed = 0; //gumb se ne s
+		SET_BIT(TIM3->CR1,TIM_CR1_CEN); //zaženi counter za debounce -> da se lahko gumb ponovno pritisne
+		button_allowed = 0; //gumb se ne sme pritisniti
 	}
 
 	WRITE_REG(EXTI->PR,0x2000);          // clear interrupt pending flag
