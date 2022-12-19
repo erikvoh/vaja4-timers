@@ -67,6 +67,7 @@ int main(void)
 	SET_BIT(RCC->AHB1ENR,RCC_AHB1ENR_GPIOCEN);// Vklop ure in periferije registra C
 
 	SET_BIT(GPIOC->MODER,1<<26);//set PC13 as output
+	GPIOC->ODR = GPIO_ODR_ODR_13; //ugasni led diodo
 
 	//TIM2 - postavitev PSCA registra in ARR registra, DIER register za prekinitev
 	//perioda timerja 1 s/1 Hz -> za utripanje led diode
@@ -172,7 +173,7 @@ void EXTI0_IRQHandler(void)
 			SET_BIT(TIM2->CR1,TIM_CR1_CEN); //zaženi counter za utripanje
 		}
 
-		WRITE_REG(TIM3->CNT,0);
+		WRITE_REG(TIM3->CNT,0); //vpiši 0 v counter, da začne šteti vedno od začetka
 		SET_BIT(TIM3->CR1,TIM_CR1_CEN); //zaženi counter za debounce -> da se lahko gumb ponovno pritisne
 
 		button_allowed = 0; //gumb se ne sme pritisnitis
