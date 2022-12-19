@@ -28,34 +28,35 @@
 void Prekinitev_konfiguracija(void);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);
-void EXTI15_10_IRQHandler(void);
+void EXTI0_IRQHandler(void);
 
 /* Deklaracija spremenljivk */
 //take spremenljivke so no go, ker ne pomenijo ničesar. smiselno bi bilo kaj v smislu "led_blink" in "button_allowed"
 //je potreben int tip? mogoče bi bilo bolje uporabiti uint8_t
-int flag=0;
-int flag1=0;
+//int flag=0;
+//int flag1=0;
 
 uint8_t led_blink;		//1 - led should blink, 0 - led off
-uint8_t button_allowed; //1 - gumb se lahko pritisne, 0 - če je pritisnjen gumb, ne naredi ničesar
+uint8_t button_allowed = 1; //1 - gumb se lahko pritisne, 0 - če je pritisnjen gumb, ne naredi ničesar
 
 void Prekinitev_konfiguracija (void){
 	//Konfiguracija tipke (PC13) kot vhod -> načeloma ne bi bilo potrebno, ker je input reset state za f4
-	CLEAR_BIT(GPIOC->MODER,1<<27);
-	CLEAR_BIT(GPIOC->MODER,1<<26);
+	CLEAR_BIT(GPIOA->MODER,1<<0);
+	CLEAR_BIT(GPIOA->MODER,1<<1);
 
 	//Nastavitev tipke kot pull-up
-	SET_BIT(GPIOC->PUPDR, 1 << 26);
-	CLEAR_BIT(GPIOC->PUPDR,1<<27);
+	SET_BIT(GPIOA->PUPDR,  1<<0);
+	CLEAR_BIT(GPIOA->PUPDR,1<<1);
 
-	SET_BIT(RCC->APB2ENR, 1<<14);			// Vklop sistemske ure in periferije
-	CLEAR_BIT(SYSCFG->EXTICR[3],0x00F0);	// Brisanje vrenosti na portu C za EXTI13
-	SET_BIT(SYSCFG->EXTICR[3],0x0020);		// Uporaba porta C za EXTI13
-	SET_BIT(EXTI->IMR,1<<13); 				// Izklop interrupt mask registra za EXTI13
-	SET_BIT(EXTI->RTSR,1<<13);				// Vklop rising edge trigger registra (pull-up vkljucen)
-	CLEAR_BIT(EXTI->FTSR,1<<13);			// Izklop falling edge trigger registra
+	SET_BIT(RCC->APB2ENR, 1<<14);			// Vklop sistemske ure in periferije - Bit 14 SYSCFGEN: System configuration controller clock enable
+//	CLEAR_BIT(SYSCFG->EXTICR[3],0x00F0);	// Brisanje vrenosti na portu C za EXTI13
+	SET_BIT(SYSCFG->EXTICR[0],0x00);		// Uporaba porta C za EXTI13
+	SET_BIT(EXTI->IMR,1<<0); 				// Izklop interrupt mask registra za EXTI13
+	SET_BIT(EXTI->RTSR,1<<0);				// Vklop rising edge trigger registra (pull-up vkljucen)
+//	CLEAR_BIT(EXTI->FTSR,1<<0);				// Izklop falling edge trigger registra
 
-	NVIC_EnableIRQ(EXTI15_10_IRQn);
+	NVIC_EnableIRQ(EXTI0_IRQn);
+
 }
 
 int main(void)
@@ -63,8 +64,9 @@ int main(void)
 	SET_BIT(RCC->APB1ENR,RCC_APB1ENR_TIM2EN); // Vklop ure in periferije - TIM2
 	SET_BIT(RCC->APB1ENR,RCC_APB1ENR_TIM3EN); // Vklop ure in periferije - TIM3
 	SET_BIT(RCC->AHB1ENR,RCC_AHB1ENR_GPIOAEN);// Vklop ure in periferije registra A
+	SET_BIT(RCC->AHB1ENR,RCC_AHB1ENR_GPIOCEN);// Vklop ure in periferije registra C
 
-	SET_BIT(GPIOA->MODER,1<<10);//set PA5 as output
+	SET_BIT(GPIOC->MODER,1<<26);//set PC13 as output
 
 	//TIM2 - postavitev PSCA registra in ARR registra, DIER register za prekinitev
 	//perioda timerja 1 s/1 Hz -> za utripanje led diode
@@ -108,7 +110,8 @@ int main(void)
 
 void TIM2_IRQHandler(void)
 {
-	GPIOA->ODR^=GPIO_ODR_ODR_5;
+	WRITE_REG(TIM2->SR,0); //clear status register, da se lahko ponovno proži interrupt
+	GPIOC->ODR^=GPIO_ODR_ODR_13;
 }
 
 
@@ -152,7 +155,7 @@ void TIM3_IRQHandler(void) //za debouncing
 
 
 
-void EXTI15_10_IRQHandler(void)
+void EXTI0_IRQHandler(void)
 {
 	if (button_allowed)
 	{
@@ -161,7 +164,7 @@ void EXTI15_10_IRQHandler(void)
 		{
 			led_blink = 0;
 			CLEAR_BIT(TIM2->CR1,TIM_CR1_CEN); //ugasni counter za utripanje
-			CLEAR_BIT(GPIOA->ODR,GPIO_ODR_ODR_5); //ugasni led diodo
+			CLEAR_BIT(GPIOC->ODR,GPIO_ODR_ODR_13); //ugasni led diodo
 		}
 		else
 		{
@@ -169,10 +172,10 @@ void EXTI15_10_IRQHandler(void)
 			SET_BIT(TIM2->CR1,TIM_CR1_CEN); //zaženi counter za utripanje
 		}
 
-
+		WRITE_REG(TIM3->CNT,0);
 		SET_BIT(TIM3->CR1,TIM_CR1_CEN); //zaženi counter za debounce -> da se lahko gumb ponovno pritisne
-		button_allowed = 0; //gumb se ne sme pritisniti
-	}
 
-	WRITE_REG(EXTI->PR,0x2000);          // clear interrupt pending flag
+		button_allowed = 0; //gumb se ne sme pritisnitis
+	}
+	WRITE_REG(EXTI->PR,0x01);          // clear interrupt pending flag, brišeš tako da zapišeš 1 (čudna logika, ali ipak)
 }
