@@ -28,7 +28,7 @@
 void Prekinitev_konfiguracija(void);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);
-void EXTI0_IRQHandler(void);
+void EXTI15_10_IRQHandler(void);
 
 /* Deklaracija spremenljivk */
 //take spremenljivke so no go, ker ne pomenijo ničesar. smiselno bi bilo kaj v smislu "led_blink" in "button_allowed"
@@ -41,18 +41,17 @@ uint8_t button_allowed = 1; //1 - gumb se lahko pritisne, 0 - če je pritisnjen 
 
 void Prekinitev_konfiguracija (void){
 	//Konfiguracija tipke (PC13) kot vhod -> načeloma ne bi bilo potrebno, ker je input reset state za f4
-	CLEAR_BIT(GPIOA->MODER,1<<0);
-	CLEAR_BIT(GPIOA->MODER,1<<1);
+	CLEAR_BIT(GPIOC->MODER,1<<27);
+	CLEAR_BIT(GPIOC->MODER,1<<26);
 
-	//Nastavitev tipke kot pull-up
-	SET_BIT(GPIOA->PUPDR,  1<<0);
-	CLEAR_BIT(GPIOA->PUPDR,1<<1);
+	//Vklop internega pull-up upora na tipki
+	SET_BIT(GPIOC->PUPDR,  1<<26);
+	CLEAR_BIT(GPIOC->PUPDR,1<<27);
 
 	SET_BIT(RCC->APB2ENR, 1<<14);			// Vklop sistemske ure in periferije - Bit 14 SYSCFGEN: System configuration controller clock enable
-//	CLEAR_BIT(SYSCFG->EXTICR[3],0x00F0);	// Brisanje vrenosti na portu C za EXTI13
-	SET_BIT(SYSCFG->EXTICR[0],0x00);		// Uporaba porta C za EXTI13
-	SET_BIT(EXTI->IMR,1<<0); 				// Izklop interrupt mask registra za EXTI13
-	SET_BIT(EXTI->RTSR,1<<0);				// Vklop rising edge trigger registra (pull-up vkljucen)
+	SET_BIT(SYSCFG->EXTICR[3],0x20);		// Uporaba porta C za EXTI13
+	SET_BIT(EXTI->IMR,1<<13); 				// Izklop interrupt mask registra za EXTI13
+	SET_BIT(EXTI->RTSR,1<<13);				// Vklop rising edge trigger registra (pull-up vkljucen)
 //	CLEAR_BIT(EXTI->FTSR,1<<0);				// Izklop falling edge trigger registra
 
 	NVIC_EnableIRQ(EXTI0_IRQn);
@@ -66,8 +65,7 @@ int main(void)
 	SET_BIT(RCC->AHB1ENR,RCC_AHB1ENR_GPIOAEN);// Vklop ure in periferije registra A
 	SET_BIT(RCC->AHB1ENR,RCC_AHB1ENR_GPIOCEN);// Vklop ure in periferije registra C
 
-	SET_BIT(GPIOC->MODER,1<<26);//set PC13 as output
-	GPIOC->ODR = GPIO_ODR_ODR_13; //ugasni led diodo
+	SET_BIT(GPIOA->MODER,1<<10);	//set PC13 as output
 
 	//TIM2 - postavitev PSCA registra in ARR registra, DIER register za prekinitev
 	//perioda timerja 1 s/1 Hz -> za utripanje led diode
@@ -112,7 +110,7 @@ int main(void)
 void TIM2_IRQHandler(void)
 {
 	WRITE_REG(TIM2->SR,0); //clear status register, da se lahko ponovno proži interrupt
-	GPIOC->ODR^=GPIO_ODR_ODR_13;
+	GPIOA->ODR^=GPIO_ODR_ODR_5;
 }
 
 
@@ -156,7 +154,7 @@ void TIM3_IRQHandler(void) //za debouncing
 
 
 
-void EXTI0_IRQHandler(void)
+void EXTI15_10_IRQHandler(void)
 {
 	if (button_allowed)
 	{
