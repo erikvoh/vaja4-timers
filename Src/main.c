@@ -108,7 +108,7 @@ void EXTI15_10_IRQHandler(void)
 		{
 			led_blink = 0;
 			CLEAR_BIT(TIM2->CR1,TIM_CR1_CEN); 		//ugasni counter za utripanje
-			CLEAR_BIT(GPIOC->ODR,GPIO_ODR_ODR_13); 	//ugasni led diodo
+			CLEAR_BIT(GPIOC->ODR,GPIO_ODR_ODR_5); 	//ugasni led diodo
 		}
 		else
 		{
