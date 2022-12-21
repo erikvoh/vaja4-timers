@@ -48,7 +48,7 @@ void Prekinitev_konfiguracija (void){
 	SET_BIT(EXTI->IMR,1<<13); 				// Izklop interrupt mask registra za EXTI13
 	SET_BIT(EXTI->RTSR,1<<13);				// Vklop rising edge trigger registra (pull-up vkljucen)
 
-	NVIC_EnableIRQ(EXTI0_IRQn);
+	NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 int main(void)
@@ -121,5 +121,5 @@ void EXTI15_10_IRQHandler(void)
 
 		button_allowed = 0; 				//gumb se ne sme pritisniti, dokler ne mine 200 ms
 	}
-	WRITE_REG(EXTI->PR,0x01);         		// clear interrupt pending flag, brišeš tako da zapišeš 1 (čudna logika, ali ipak)
+	WRITE_REG(EXTI->PR,0x2000);         		// clear interrupt pending flag, brišeš tako da zapišeš 1 (čudna logika, ali ipak)
 }
